@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   runApp(MyApp());
@@ -60,11 +62,48 @@ class _PathEditorState extends State<PathEditor> {
               onPressed: _addNewPath,
               child: Text('Start New Path'),
             ),
+            ElevatedButton(
+              onPressed: _saveToGallery,
+              child: Text('Save to Gallery'),
+            ),
           ],
         ),
       ],
     );
   }
+
+  Future<void> _saveToGallery() async {
+    await _requestPermissions();
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, Rect.fromPoints(Offset(0, 0), Offset(1080, 1920)));
+
+    // Use PathPainter to draw on the canvas
+    PathPainter painter = PathPainter(paths);
+    painter.paint(canvas, Size(1080, 1920));
+
+    // Convert the canvas to an image
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(1080, 1920);
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    final buffer = byteData!.buffer.asUint8List();
+
+    // Get a temporary directory to store the image before saving to gallery
+    final directory = await getTemporaryDirectory();
+    final filePath = '${directory.path}/drawing_${DateTime.now().millisecondsSinceEpoch}.png';
+    final file = File(filePath);
+    await file.writeAsBytes(buffer);
+
+    // Save the image to the gallery using ImageGallerySaver
+    final result = await ImageGallerySaver.saveFile(filePath);
+    print('Saved to gallery: $result');
+  }
+
+  Future<void> _requestPermissions() async {
+    await [
+      Permission.storage,
+    ].request();
+  }
+
 
   void _addNewPath() {
     setState(() {
