@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure plugin initialization
   runApp(MyApp());
 }
 
@@ -29,46 +32,121 @@ class PathEditor extends StatefulWidget {
 class _PathEditorState extends State<PathEditor> {
   List<PathData> paths = [PathData()];
   int currentPathIndex = 0;
+  File? backgroundImage;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
-        Expanded(
-          child: GestureDetector(
-            onTapDown: (TapDownDetails details) {
-              final tapPosition = details.localPosition;
-              _selectPointOrAddNew(tapPosition);
-            },
-            onPanUpdate: (DragUpdateDetails details) {
-              _updateSelectedPoint(details.delta);
-            },
-            onPanEnd: (_) {
-              _clearSelection();
-            },
-            onDoubleTap: () {
-              _removeSelectedPoint();
-            },
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: PathPainter(paths),
+        if (backgroundImage != null) // Display background if selected
+          Positioned.fill(
+            child: SvgPicture.file(
+              backgroundImage!,
+              width: 50,
+              height: 50,
             ),
           ),
-        ),
-        Row(
+        Column(
           children: [
-            ElevatedButton(
-              onPressed: _addNewPath,
-              child: Text('Start New Path'),
+            Expanded(
+              child: GestureDetector(
+                onTapDown: (TapDownDetails details) {
+                  final tapPosition = details.localPosition;
+                  _selectPointOrAddNew(tapPosition);
+                },
+                onPanUpdate: (DragUpdateDetails details) {
+                  _updateSelectedPoint(details.delta);
+                },
+                onPanEnd: (_) {
+                  _clearSelection();
+                },
+                onDoubleTap: () {
+                  _removeSelectedPoint();
+                },
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: PathPainter(paths),
+                ),
+              ),
             ),
-            ElevatedButton(
-              onPressed: _exportDrawing,
-              child: Text('Save to Gallery'),
-            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround, // To space buttons evenly
+              children: [
+                SizedBox(
+                  width: 100, // Set a smaller width
+                  height: 40, // Set a smaller height
+                  child: ElevatedButton(
+                    onPressed: _addNewPath,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4), // Smaller padding
+                    ),
+                    child: Text('New Path', style: TextStyle(fontSize: 12)), // Smaller text
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: _exportDrawing,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    child: Text('Save', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: () => _importDrawing(),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    child: Text('Import SVG', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  height: 40,
+                  child: ElevatedButton(
+                    onPressed: _clearAllDrawings,
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    child: Text('Clear', style: TextStyle(fontSize: 12)),
+                  ),
+                ),
+              ],
+            )
+
           ],
         ),
       ],
     );
+  }
+
+  Future<void> _importDrawing() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['svg'], // Allow only SVG files
+    );
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        backgroundImage = File(result.files.first.path!); // Set background image
+      });
+    }
+  }
+  void _drawSVGFromPath(String path) {
+    // Your logic to draw the SVG on the canvas
+    // For example, use flutter_svg to render the SVG:
+    SvgPicture.asset(path); // This would render the SVG
+  }
+
+  void _clearAllDrawings() {
+    setState(() {
+      paths.clear(); // Clear the list of paths
+    });
+    _addNewPath();
   }
 
   Future<void> _exportDrawing() async {
