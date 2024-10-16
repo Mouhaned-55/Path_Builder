@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -63,7 +62,7 @@ class _PathEditorState extends State<PathEditor> {
               child: Text('Start New Path'),
             ),
             ElevatedButton(
-              onPressed: _saveToGallery,
+              onPressed: _exportDrawing,
               child: Text('Save to Gallery'),
             ),
           ],
@@ -72,30 +71,37 @@ class _PathEditorState extends State<PathEditor> {
     );
   }
 
-  Future<void> _saveToGallery() async {
-    await _requestPermissions();
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder, Rect.fromPoints(Offset(0, 0), Offset(1080, 1920)));
+  Future<void> _exportDrawing() async {
+    final svgPath = StringBuffer();
+    svgPath.write(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1600">\n');
 
-    // Use PathPainter to draw on the canvas
-    PathPainter painter = PathPainter(paths);
-    painter.paint(canvas, Size(1080, 1920));
+    for (var pathData in paths) {
+      if (pathData.points.isNotEmpty) {
+        svgPath.write('<path d="M${pathData.points[0].dx},${pathData.points[0].dy} ');
 
-    // Convert the canvas to an image
-    final picture = recorder.endRecording();
-    final img = await picture.toImage(1080, 1920);
-    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-    final buffer = byteData!.buffer.asUint8List();
+        for (int i = 0; i < pathData.points.length; i++) {
+          if (pathData.controlPointsOut[i] == null) {
+            svgPath.write('L${pathData.points[i].dx},${pathData.points[i].dy} ');
+          } else {
+            svgPath.write(
+                'Q${pathData.controlPointsOut[i]!.dx},${pathData.controlPointsOut[i]!.dy},${pathData.points[i].dx},${pathData.points[i].dy} ');
+          }
+        }
 
-    // Get a temporary directory to store the image before saving to gallery
-    final directory = await getTemporaryDirectory();
-    final filePath = '${directory.path}/drawing_${DateTime.now().millisecondsSinceEpoch}.png';
-    final file = File(filePath);
-    await file.writeAsBytes(buffer);
+        svgPath.write('" stroke="black" fill="none" stroke-width="4"/>\n');
+      }
+    }
 
-    // Save the image to the gallery using ImageGallerySaver
-    final result = await ImageGallerySaver.saveFile(filePath);
-    print('Saved to gallery: $result');
+    svgPath.write('</svg>');
+
+    final directory = await getApplicationDocumentsDirectory();
+    final svgPathFile = '${directory.path}/exported_shape.svg';
+    final file = await File(svgPathFile).writeAsString(svgPath.toString());
+    print('SVG shape exported to ${file.path}');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('SVG shape exported to ${file.path}')),
+    );
   }
 
   Future<void> _requestPermissions() async {
