@@ -156,12 +156,12 @@ class _PathEditorState extends State<PathEditor> {
     svgPath.write(
         '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">\n');
 
-    // Add background image if it exists
+    // Add background SVG if it exists
     if (backgroundImage != null) {
-      final bytes = await backgroundImage!.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      String backgroundSvgContent = await backgroundImage!.readAsString();
       svgPath.write(
-          '<image href="data:image/png;base64,$base64Image" width="800" height="600" />\n');
+          '<defs>\n<g id="background">\n$backgroundSvgContent\n</g>\n</defs>\n');
+      svgPath.write('<use href="#background" x="0" y="0" />\n');
     }
 
     for (var pathData in paths) {
