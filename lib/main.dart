@@ -74,21 +74,24 @@ class _PathEditorState extends State<PathEditor> {
   Future<void> _exportDrawing() async {
     final svgPath = StringBuffer();
     svgPath.write(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1600">\n');
+        '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">\n');
 
     for (var pathData in paths) {
       if (pathData.points.isNotEmpty) {
         svgPath.write('<path d="M${pathData.points[0].dx},${pathData.points[0].dy} ');
 
-        for (int i = 0; i < pathData.points.length; i++) {
-          if (pathData.controlPointsOut[i] == null) {
-            svgPath.write('L${pathData.points[i].dx},${pathData.points[i].dy} ');
-          } else {
+        for (int i = 0; i < pathData.points.length - 1; i++) {
+          if (pathData.isControlPointModified[i]) {
+            // Export cubic Bézier curves using 'C' command
+            var cpOut = pathData.controlPointsOut[i]!;
+            var cpIn = pathData.controlPointsIn[i + 1]!;
             svgPath.write(
-                'Q${pathData.controlPointsOut[i]!.dx},${pathData.controlPointsOut[i]!.dy},${pathData.points[i].dx},${pathData.points[i].dy} ');
+                'C${cpOut.dx},${cpOut.dy},${cpIn.dx},${cpIn.dy},${pathData.points[i + 1].dx},${pathData.points[i + 1].dy} ');
+          } else {
+            // Export straight lines using 'L' command
+            svgPath.write('L${pathData.points[i + 1].dx},${pathData.points[i + 1].dy} ');
           }
         }
-
         svgPath.write('" stroke="black" fill="none" stroke-width="4"/>\n');
       }
     }
@@ -104,11 +107,7 @@ class _PathEditorState extends State<PathEditor> {
     );
   }
 
-  Future<void> _requestPermissions() async {
-    await [
-      Permission.storage,
-    ].request();
-  }
+
 
 
   void _addNewPath() {
