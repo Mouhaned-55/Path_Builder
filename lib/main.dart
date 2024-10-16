@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
@@ -145,6 +146,7 @@ class _PathEditorState extends State<PathEditor> {
   void _clearAllDrawings() {
     setState(() {
       paths.clear(); // Clear the list of paths
+      backgroundImage = null;
     });
     _addNewPath();
   }
@@ -154,19 +156,25 @@ class _PathEditorState extends State<PathEditor> {
     svgPath.write(
         '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">\n');
 
+    // Add background image if it exists
+    if (backgroundImage != null) {
+      final bytes = await backgroundImage!.readAsBytes();
+      final base64Image = base64Encode(bytes);
+      svgPath.write(
+          '<image href="data:image/png;base64,$base64Image" width="800" height="600" />\n');
+    }
+
     for (var pathData in paths) {
       if (pathData.points.isNotEmpty) {
         svgPath.write('<path d="M${pathData.points[0].dx},${pathData.points[0].dy} ');
 
         for (int i = 0; i < pathData.points.length - 1; i++) {
           if (pathData.isControlPointModified[i]) {
-            // Export cubic Bézier curves using 'C' command
             var cpOut = pathData.controlPointsOut[i]!;
             var cpIn = pathData.controlPointsIn[i + 1]!;
             svgPath.write(
                 'C${cpOut.dx},${cpOut.dy},${cpIn.dx},${cpIn.dy},${pathData.points[i + 1].dx},${pathData.points[i + 1].dy} ');
           } else {
-            // Export straight lines using 'L' command
             svgPath.write('L${pathData.points[i + 1].dx},${pathData.points[i + 1].dy} ');
           }
         }
