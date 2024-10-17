@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        appBar: AppBar(title: Text('PATH BUILDER')),
-        body: PathEditor(),
+        appBar: AppBar(title: const Text('PATH BUILDER')),
+        body: const PathEditor(),
       ),
     );
   }
